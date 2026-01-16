@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-shell";
 import {
   isPermissionGranted,
   requestPermission,
@@ -93,7 +92,7 @@ function App() {
   const needsPermission = locationPermission === "denied" || locationPermission === "not_determined";
 
   const openLocationSettings = async () => {
-    await open("x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices");
+    await invoke("open_location_settings");
   };
 
   return (

@@ -1,3 +1,5 @@
+import { rssiToPercent } from "../utils/wifiNotification";
+
 interface WifiNetwork {
   ssid: string;
   rssi: number;
@@ -21,12 +23,6 @@ function getSignalBars(rssi: number): number {
   if (rssi >= -60) return 3;
   if (rssi >= -70) return 2;
   return 1;
-}
-
-function rssiToPercent(rssi: number): number {
-  // -100dBm = 0%, -50dBm = 100% としてマッピング
-  const percent = (rssi + 100) * 2;
-  return Math.min(100, Math.max(0, percent));
 }
 
 function SignalBars({ rssi }: { rssi: number }) {
