@@ -14,8 +14,8 @@ interface WifiListProps {
 }
 
 export function getSignalStrength(rssi: number): { label: string; className: string } {
-  if (rssi >= -50) return { label: "非常に良好", className: "signal-excellent" };
-  if (rssi >= -60) return { label: "良好", className: "signal-good" };
+  if (rssi >= -50) return { label: "非常に良い", className: "signal-excellent" };
+  if (rssi >= -60) return { label: "良い", className: "signal-good" };
   if (rssi >= -70) return { label: "普通", className: "signal-fair" };
   return { label: "弱い", className: "signal-weak" };
 }

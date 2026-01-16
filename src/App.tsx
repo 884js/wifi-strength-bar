@@ -113,7 +113,7 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>WiFi Monitor</h1>
+        <h1>WiFi Strength Bar</h1>
         {lastUpdate && (
           <span className="last-update">
             最終更新: {lastUpdate.toLocaleTimeString()}
@@ -125,8 +125,13 @@ function App() {
         <div className="current-network">
           <span className="current-label">接続中:</span>
           <span className="current-ssid">{currentNetwork.ssid}</span>
-          <span className={`current-rssi ${getSignalStrength(currentNetwork.rssi).className}`}>
-            {getSignalStrength(currentNetwork.rssi).label} ({rssiToPercent(currentNetwork.rssi)}%)
+          <span
+            className={`current-rssi ${
+              getSignalStrength(currentNetwork.rssi).className
+            }`}
+          >
+            {getSignalStrength(currentNetwork.rssi).label} (
+            {rssiToPercent(currentNetwork.rssi)}%)
           </span>
         </div>
       )}
@@ -144,7 +149,7 @@ function App() {
       {error && <p className="error">{error}</p>}
       {!loading && !error && (
         <WifiList
-          networks={networks.filter(n => n.ssid !== currentNetwork?.ssid)}
+          networks={networks.filter((n) => n.ssid !== currentNetwork?.ssid)}
           knownSsids={knownSsids}
         />
       )}

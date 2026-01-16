@@ -1,5 +1,5 @@
 {
-  "name": "wifi-monitor",
+  "name": "wifi-strength-bar",
   "private": true,
   "version": "0.1.0",
   "type": "module",

@@ -1,5 +1,5 @@
 [package]
-name = "wifi-monitor"
+name = "wifi-strength-bar"
 version = "0.1.0"
 edition = "2021"
 
@@ -20,6 +20,8 @@ objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-core-location = "0.3"
 objc2-core-wlan = { version = "0.3", features = ["CWConfiguration", "CWNetworkProfile"] }
+objc2-app-kit = "0.3"
+objc2-quartz-core = "0.3"
 
 [features]
 default = ["custom-protocol"]

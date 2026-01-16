@@ -102,7 +102,7 @@ cp .build/release/wifi-scanner ../src-tauri/binaries/wifi-scanner-aarch64-apple-
 
 ### SSIDが「(非公開)」と表示される
 
-位置情報サービスの許可が必要です。開発モードではターミナルに、ビルド後は WiFi Monitor.app に許可を付与してください。
+位置情報サービスの許可が必要です。開発モードではターミナルに、ビルド後は WiFi Strength Bar.app に許可を付与してください。
 
 ### ビルド時に "unknown path" エラー
 

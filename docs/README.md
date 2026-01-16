@@ -1,4 +1,4 @@
-# WiFi Monitor
+# WiFi Strength Bar
 
 macOS向けのWiFi電波強度モニターアプリ。周囲のWiFiネットワークをスキャンし、電波強度順にリアルタイムで表示します。
 
@@ -95,8 +95,8 @@ npm run tauri build
 ```
 
 ビルド成果物:
-- `src-tauri/target/release/bundle/macos/WiFi Monitor.app`
-- `src-tauri/target/release/bundle/dmg/WiFi Monitor_0.1.0_aarch64.dmg`
+- `src-tauri/target/release/bundle/macos/WiFi Strength Bar.app`
+- `src-tauri/target/release/bundle/dmg/WiFi Strength Bar_0.1.0_aarch64.dmg`
 
 ## 位置情報サービスについて
 
@@ -106,7 +106,7 @@ macOSでWiFiのSSID（ネットワーク名）を取得するには、**位置�
 
 1. アプリ（.app）をビルドして実行
 2. システム設定 → プライバシーとセキュリティ → 位置情報サービス
-3. 「WiFi Monitor」を探してチェックを入れる
+3. 「WiFi Strength Bar」を探してチェックを入れる
 
 許可がない場合、SSIDは「(非公開)」と表示されますが、電波強度（RSSI）は正常に取得できます。
 

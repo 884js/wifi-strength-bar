@@ -196,6 +196,29 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // macOSでウィンドウの角を丸くする
+            #[cfg(target_os = "macos")]
+            {
+                use objc2_app_kit::{NSColor, NSWindow};
+                use objc2::rc::Retained;
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let ns_window: Retained<NSWindow> = unsafe {
+                        Retained::from_raw(window.ns_window().unwrap() as *mut NSWindow).unwrap()
+                    };
+                    ns_window.setOpaque(false);
+                    ns_window.setBackgroundColor(Some(&NSColor::clearColor()));
+
+                    if let Some(content_view) = ns_window.contentView() {
+                        content_view.setWantsLayer(true);
+                        if let Some(layer) = content_view.layer() {
+                            layer.setCornerRadius(16.0);
+                            layer.setMasksToBounds(true);
+                        }
+                    }
+                }
+            }
+
             // メニュー作成
             let show_i = MenuItem::with_id(app, "show", "表示", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
@@ -204,6 +227,7 @@ pub fn run() {
             // トレイアイコン作成
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
+                .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -230,10 +254,14 @@ pub fn run() {
                     {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
-                            use tauri_plugin_positioner::{WindowExt, Position};
-                            let _ = window.move_window(Position::TrayBottomCenter);
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                use tauri_plugin_positioner::{WindowExt, Position};
+                                let _ = window.move_window(Position::TrayBottomCenter);
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
                         }
                     }
                 })
