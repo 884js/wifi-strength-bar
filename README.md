@@ -15,13 +15,31 @@ macOSメニューバーに常駐するWiFi電波強度モニター
 
 ![WiFi Strength Bar スクリーンショット](image.png)
 
-## 必要環境
+## ダウンロード
+
+[Releases](https://github.com/884js/wifi-strength-bar/releases)からDMGファイルをダウンロードできます。
+
+### インストール手順
+
+1. DMGファイルをダウンロード
+2. DMGを開き、アプリをApplicationsフォルダにドラッグ
+3. 初回起動時に「壊れているため開けません」と表示された場合は、ターミナルで以下を実行:
+   ```bash
+   xattr -cr /Applications/WiFi\ Strength\ Bar.app
+   ```
+4. アプリを起動
+
+### 動作環境
 
 - macOS 10.13 以上
+- Apple Silicon (aarch64)
+
+## 開発環境のセットアップ
+
+### 必要環境
+
 - Node.js
 - Rust
-
-## インストール
 
 ### 依存関係のインストール
 
