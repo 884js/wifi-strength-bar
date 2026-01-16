@@ -9,10 +9,18 @@ pub struct WifiNetwork {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrentNetwork {
+    pub ssid: String,
+    pub rssi: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanResult {
     pub networks: Vec<WifiNetwork>,
     #[serde(rename = "locationPermission")]
     pub location_permission: String,
+    #[serde(rename = "currentNetwork")]
+    pub current_network: Option<CurrentNetwork>,
 }
 
 #[cfg(target_os = "macos")]
@@ -50,10 +58,45 @@ mod location {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod current_wifi {
+    use super::CurrentNetwork;
+    use objc2_core_wlan::CWWiFiClient;
+
+    pub fn get_current_network() -> Option<CurrentNetwork> {
+        unsafe {
+            let client = CWWiFiClient::sharedWiFiClient();
+            let interface = client.interface()?;
+
+            let ssid_ns = interface.ssid();
+            let ssid = ssid_ns.as_deref()?.to_string();
+
+            let rssi = interface.rssiValue();
+
+            Some(CurrentNetwork {
+                ssid,
+                rssi: rssi as i32,
+            })
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+mod current_wifi {
+    use super::CurrentNetwork;
+
+    pub fn get_current_network() -> Option<CurrentNetwork> {
+        None
+    }
+}
+
 #[tauri::command]
 fn scan_wifi() -> Result<ScanResult, String> {
     // Request location permission first (required for SSID on macOS)
     let permission_status = location::request_location_permission();
+
+    // Get current connected network
+    let current_network = current_wifi::get_current_network();
 
     let networks = wifi_scan::scan()
         .map_err(|e| format!("WiFi スキャン失敗: {}", e))?;
@@ -74,6 +117,7 @@ fn scan_wifi() -> Result<ScanResult, String> {
     Ok(ScanResult {
         networks: converted,
         location_permission: permission_status,
+        current_network,
     })
 }
 
@@ -81,6 +125,7 @@ fn scan_wifi() -> Result<ScanResult, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![scan_wifi])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
