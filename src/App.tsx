@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   isPermissionGranted,
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
-import WifiList from "./components/WifiList";
+import WifiList, { getSignalStrength } from "./components/WifiList";
 import {
   WifiNetwork,
   CurrentNetwork,
@@ -18,6 +19,7 @@ interface ScanResult {
   networks: WifiNetwork[];
   locationPermission: string;
   currentNetwork: CurrentNetwork | null;
+  knownSsids: string[];
 }
 
 const NOTIFICATION_THRESHOLD = 10;
@@ -27,6 +29,7 @@ function App() {
   const [currentNetwork, setCurrentNetwork] = useState<CurrentNetwork | null>(
     null
   );
+  const [knownSsids, setKnownSsids] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -71,6 +74,7 @@ function App() {
       const result = await invoke<ScanResult>("scan_wifi");
       setNetworks(result.networks);
       setCurrentNetwork(result.currentNetwork);
+      setKnownSsids(result.knownSsids);
       setLocationPermission(result.locationPermission);
       setError(null);
       setLastUpdate(new Date());
@@ -88,6 +92,17 @@ function App() {
     const interval = setInterval(scanNetworks, 3000);
     return () => clearInterval(interval);
   }, [scanNetworks]);
+
+  useEffect(() => {
+    const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (!focused) {
+        getCurrentWindow().hide();
+      }
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
 
   const needsPermission = locationPermission === "denied" || locationPermission === "not_determined";
 
@@ -110,8 +125,8 @@ function App() {
         <div className="current-network">
           <span className="current-label">接続中:</span>
           <span className="current-ssid">{currentNetwork.ssid}</span>
-          <span className="current-rssi">
-            ({rssiToPercent(currentNetwork.rssi)}%)
+          <span className={`current-rssi ${getSignalStrength(currentNetwork.rssi).className}`}>
+            {getSignalStrength(currentNetwork.rssi).label} ({rssiToPercent(currentNetwork.rssi)}%)
           </span>
         </div>
       )}
@@ -127,7 +142,12 @@ function App() {
 
       {loading && <p className="loading">スキャン中...</p>}
       {error && <p className="error">{error}</p>}
-      {!loading && !error && <WifiList networks={networks} />}
+      {!loading && !error && (
+        <WifiList
+          networks={networks.filter(n => n.ssid !== currentNetwork?.ssid)}
+          knownSsids={knownSsids}
+        />
+      )}
     </div>
   );
 }

@@ -13,10 +13,14 @@
     "windows": [
       {
         "title": "WiFi Monitor",
-        "width": 600,
-        "height": 500,
-        "resizable": true,
-        "fullscreen": false
+        "width": 320,
+        "height": 450,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "skipTaskbar": true,
+        "visible": false
       }
     ],
     "security": {

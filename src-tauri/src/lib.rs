@@ -26,6 +26,8 @@ pub struct ScanResult {
     pub location_permission: String,
     #[serde(rename = "currentNetwork")]
     pub current_network: Option<CurrentNetwork>,
+    #[serde(rename = "knownSsids")]
+    pub known_ssids: Vec<String>,
 }
 
 #[cfg(target_os = "macos")]
@@ -95,6 +97,41 @@ mod current_wifi {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod known_networks {
+    use objc2_core_wlan::{CWWiFiClient, CWNetworkProfile};
+
+    pub fn get_known_ssids() -> Vec<String> {
+        unsafe {
+            let client = CWWiFiClient::sharedWiFiClient();
+            let Some(interface) = client.interface() else {
+                return Vec::new();
+            };
+            let Some(config) = interface.configuration() else {
+                return Vec::new();
+            };
+            let profiles = config.networkProfiles();
+            let count = profiles.count();
+
+            let mut ssids = Vec::new();
+            for i in 0..count {
+                let profile: objc2::rc::Retained<CWNetworkProfile> = profiles.objectAtIndex(i);
+                if let Some(ssid) = profile.ssid() {
+                    ssids.push(ssid.to_string());
+                }
+            }
+            ssids
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+mod known_networks {
+    pub fn get_known_ssids() -> Vec<String> {
+        Vec::new()
+    }
+}
+
 #[tauri::command]
 fn open_location_settings() -> Result<(), String> {
     std::process::Command::new("open")
@@ -111,6 +148,9 @@ fn scan_wifi() -> Result<ScanResult, String> {
 
     // Get current connected network
     let current_network = current_wifi::get_current_network();
+
+    // Get known network SSIDs
+    let known_ssids = known_networks::get_known_ssids();
 
     let networks = wifi_scan::scan()
         .map_err(|e| format!("WiFi スキャン失敗: {}", e))?;
@@ -141,6 +181,7 @@ fn scan_wifi() -> Result<ScanResult, String> {
         networks: converted,
         location_permission: permission_status,
         current_network,
+        known_ssids,
     })
 }
 
@@ -149,7 +190,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
+            // macOSでドックアイコンを非表示
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             // メニュー作成
             let show_i = MenuItem::with_id(app, "show", "表示", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
@@ -173,6 +219,9 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
+                    // トレイ位置をpositionerプラグインに通知
+                    tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
+
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
@@ -181,6 +230,8 @@ pub fn run() {
                     {
                         let app = tray.app_handle();
                         if let Some(window) = app.get_webview_window("main") {
+                            use tauri_plugin_positioner::{WindowExt, Position};
+                            let _ = window.move_window(Position::TrayBottomCenter);
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
