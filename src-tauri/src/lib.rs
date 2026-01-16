@@ -1,9 +1,21 @@
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 use tauri::{
     Manager,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
+
+// show()した時刻を記録
+static LAST_SHOW_TIME: std::sync::OnceLock<Mutex<Option<Instant>>> = std::sync::OnceLock::new();
+
+fn get_last_show_time() -> &'static Mutex<Option<Instant>> {
+    LAST_SHOW_TIME.get_or_init(|| Mutex::new(None))
+}
+
+const FOCUS_GRACE_PERIOD: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WifiNetwork {
@@ -141,8 +153,15 @@ fn open_location_settings() -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-fn scan_wifi() -> Result<ScanResult, String> {
+// キャッシュ用のグローバル変数
+static SCAN_CACHE: std::sync::OnceLock<Arc<Mutex<Option<ScanResult>>>> = std::sync::OnceLock::new();
+
+fn get_scan_cache() -> &'static Arc<Mutex<Option<ScanResult>>> {
+    SCAN_CACHE.get_or_init(|| Arc::new(Mutex::new(None)))
+}
+
+// 実際のスキャンを実行する内部関数
+fn perform_scan() -> Result<ScanResult, String> {
     // Request location permission first (required for SSID on macOS)
     let permission_status = location::request_location_permission();
 
@@ -185,6 +204,49 @@ fn scan_wifi() -> Result<ScanResult, String> {
     })
 }
 
+// バックグラウンドスキャンを開始する関数
+fn start_background_scanner() {
+    let cache = get_scan_cache().clone();
+
+    thread::spawn(move || {
+        loop {
+            if let Ok(result) = perform_scan() {
+                if let Ok(mut guard) = cache.lock() {
+                    *guard = Some(result);
+                }
+            }
+            thread::sleep(Duration::from_secs(3));
+        }
+    });
+}
+
+#[tauri::command]
+fn scan_wifi() -> Result<ScanResult, String> {
+    // キャッシュから結果を返す（即座）
+    let cache = get_scan_cache();
+    if let Ok(guard) = cache.lock() {
+        if let Some(ref result) = *guard {
+            return Ok(result.clone());
+        }
+    }
+
+    // キャッシュがない場合は実際にスキャン
+    perform_scan()
+}
+
+#[tauri::command]
+fn force_scan_wifi() -> Result<ScanResult, String> {
+    // 強制的にスキャンを実行してキャッシュを更新
+    let result = perform_scan()?;
+
+    let cache = get_scan_cache();
+    if let Ok(mut guard) = cache.lock() {
+        *guard = Some(result.clone());
+    }
+
+    Ok(result)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -192,6 +254,9 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_positioner::init())
         .setup(|app| {
+            // バックグラウンドスキャナーを開始
+            start_background_scanner();
+
             // macOSでドックアイコンを非表示
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -259,6 +324,10 @@ pub fn run() {
                             } else {
                                 use tauri_plugin_positioner::{WindowExt, Position};
                                 let _ = window.move_window(Position::TrayBottomCenter);
+                                // タイムスタンプを記録
+                                if let Ok(mut guard) = get_last_show_time().lock() {
+                                    *guard = Some(Instant::now());
+                                }
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
@@ -270,12 +339,27 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let _ = window.hide();
-                api.prevent_close();
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+                tauri::WindowEvent::Focused(false) => {
+                    // 猶予期間内ならhideしない
+                    let in_grace_period = get_last_show_time()
+                        .lock()
+                        .ok()
+                        .and_then(|guard| *guard)
+                        .map_or(false, |t| t.elapsed() < FOCUS_GRACE_PERIOD);
+
+                    if !in_grace_period {
+                        let _ = window.hide();
+                    }
+                }
+                _ => {}
             }
         })
-        .invoke_handler(tauri::generate_handler![scan_wifi, open_location_settings])
+        .invoke_handler(tauri::generate_handler![scan_wifi, force_scan_wifi, open_location_settings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   isPermissionGranted,
   requestPermission,
@@ -31,7 +30,7 @@ function App() {
   );
   const [knownSsids, setKnownSsids] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [locationPermission, setLocationPermission] = useState<string>("");
   const lastNotifiedSsid = useRef<string | null>(null);
@@ -93,16 +92,6 @@ function App() {
     return () => clearInterval(interval);
   }, [scanNetworks]);
 
-  useEffect(() => {
-    const unlisten = getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (!focused) {
-        getCurrentWindow().hide();
-      }
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  }, []);
 
   const needsPermission = locationPermission === "denied" || locationPermission === "not_determined";
 
