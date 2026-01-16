@@ -10,24 +10,33 @@ export interface CurrentNetwork {
   rssi: number;
 }
 
-export function rssiToPercent(_rssi: number): number {
-  // TODO: 実装
-  return 0;
+const RSSI_MIN = -90;
+const RSSI_MAX = -30;
+
+export function rssiToPercent(rssi: number): number {
+  const clamped = Math.max(RSSI_MIN, Math.min(RSSI_MAX, rssi));
+  return Math.round(((clamped - RSSI_MIN) / (RSSI_MAX - RSSI_MIN)) * 100);
 }
 
 export function findStrongerNetworks(
-  _networks: WifiNetwork[],
-  _current: CurrentNetwork | null
+  networks: WifiNetwork[],
+  current: CurrentNetwork | null
 ): WifiNetwork[] {
-  // TODO: 実装
-  return [];
+  if (!current) {
+    return [];
+  }
+  return networks.filter(
+    (network) => network.ssid !== current.ssid && network.rssi > current.rssi
+  );
 }
 
 export function shouldNotify(
-  _strongest: WifiNetwork | null,
-  _current: CurrentNetwork | null,
-  _threshold: number
+  strongest: WifiNetwork | null,
+  current: CurrentNetwork | null,
+  threshold: number
 ): boolean {
-  // TODO: 実装
-  return false;
+  if (!strongest || !current) {
+    return false;
+  }
+  return strongest.rssi > current.rssi + threshold;
 }

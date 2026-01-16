@@ -45,12 +45,13 @@ describe("wifiNotification", () => {
     it("同じSSIDのネットワークは除外する", () => {
       const networks: WifiNetwork[] = [
         { ssid: "CurrentNetwork", rssi: -50, channel: 1, security: "WPA2" },
-        { ssid: "OtherNetwork", rssi: -55, channel: 6, security: "WPA2" },
+        { ssid: "OtherNetwork", rssi: -65, channel: 6, security: "WPA2" },
       ];
       const current: CurrentNetwork = { ssid: "CurrentNetwork", rssi: -60 };
 
       const stronger = findStrongerNetworks(networks, current);
 
+      // 同じSSIDのCurrentNetworkは除外され、OtherNetworkは弱いので返されない
       expect(stronger).toHaveLength(0);
     });
 
